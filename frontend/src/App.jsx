@@ -14,6 +14,8 @@ import GeoPage from './pages/GeoPage';
 import About from './pages/About';
 import Admin from './pages/Admin';
 
+import Chatbot from './components/Chatbot';
+
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user, loading } = useAuth();
   if (loading) return <div style={{ padding: '3rem', textAlign: 'center', color: '#a0aec0' }}>Loading...</div>;
@@ -49,8 +51,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Toaster position="top-right" />
+        <Toaster position="top-right" toastOptions={{ style: { fontFamily: 'var(--font-sans)', fontSize: '0.88rem', border: '1px solid var(--border)', borderRadius: '6px' } }} />
         <AppRoutes />
+        <Chatbot />
       </AuthProvider>
     </BrowserRouter>
   );
