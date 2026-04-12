@@ -3,7 +3,7 @@ WORKDIR /app
 ARG REACT_APP_API_URL=http://localhost:5000
 ENV REACT_APP_API_URL=$REACT_APP_API_URL
 COPY package.json ./
-RUN npm install --legacy-peer-deps
+RUN npm install --legacy-peer-deps && npm install ajv@^8.0.0 --legacy-peer-deps
 COPY . .
 ENV CI=false
 RUN npm run build
