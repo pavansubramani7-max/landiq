@@ -1,0 +1,10 @@
+{
+  "folders": [
+    { "path": "backend", "name": "LandIQ Backend" },
+    { "path": "frontend", "name": "LandIQ Frontend" }
+  ],
+  "settings": {
+    "python.defaultInterpreterPath": "${workspaceFolder:LandIQ Backend}/venv/Scripts/python.exe",
+    "editor.formatOnSave": true
+  }
+}

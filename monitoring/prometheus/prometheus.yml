@@ -1,0 +1,40 @@
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: landiq-monitor
+    environment: production
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+rule_files: []
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: prometheus
+    static_configs:
+      - targets: [localhost:9090]
+
+  # LandIQ Backend Flask API
+  - job_name: landiq-backend
+    metrics_path: /metrics
+    scrape_interval: 10s
+    static_configs:
+      - targets: [backend:5000]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: landiq-backend
+
+  # PostgreSQL exporter (optional)
+  - job_name: postgres
+    static_configs:
+      - targets: [postgres-exporter:9187]
+
+  # Node exporter (host metrics)
+  - job_name: node
+    static_configs:
+      - targets: [node-exporter:9100]

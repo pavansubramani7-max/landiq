@@ -1,0 +1,44 @@
+name: PR Quality Check
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  lint-backend:
+    name: Python Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install flake8
+      - name: Lint with flake8
+        run: |
+          cd backend
+          flake8 app/ modules/ --max-line-length=120 --ignore=E501,W503 --statistics
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install bandit safety
+      - name: Bandit security scan
+        run: cd backend && bandit -r app/ modules/ -ll -q || true
+      - name: Safety dependency check
+        run: cd backend && safety check -r requirements.txt --ignore 70612 || true
+
+  docker-lint:
+    name: Dockerfile Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: backend/Dockerfile
+          ignore: DL3008,DL3013,DL3042

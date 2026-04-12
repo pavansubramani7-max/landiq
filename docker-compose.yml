@@ -1,0 +1,119 @@
+version: '3.8'
+
+services:
+
+  # ── Database ────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: landiq-postgres
+    environment:
+      POSTGRES_DB:       landiq
+      POSTGRES_USER:     landiq
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-landiq_dev_pass}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U landiq"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - landiq-network
+
+  # ── Backend API ─────────────────────────────────────────────────────────────
+  backend:
+    build: ./backend
+    container_name: landiq-backend
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./backend/reports:/app/reports
+      - ./backend/models/trained:/app/models/trained
+    environment:
+      FLASK_ENV:                  production
+      SECRET_KEY:                 ${SECRET_KEY:-landiq-secret-change-in-prod}
+      JWT_SECRET_KEY:             ${JWT_SECRET_KEY:-landiq-jwt-change-in-prod}
+      JWT_ACCESS_TOKEN_EXPIRES:   3600
+      DATABASE_URL:               postgresql://landiq:${POSTGRES_PASSWORD:-landiq_dev_pass}@postgres:5432/landiq
+      UPLOAD_FOLDER:              /app/uploads
+      REPORTS_FOLDER:             /app/reports
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - landiq-network
+
+  # ── Frontend ────────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        REACT_APP_API_URL: http://localhost:5000
+    container_name: landiq-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - landiq-network
+
+  # ── Prometheus Monitoring ───────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: landiq-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    networks:
+      - landiq-network
+
+  # ── Grafana Dashboard ───────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: landiq-grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+    environment:
+      GF_SECURITY_ADMIN_USER:     admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-landiq_grafana}
+      GF_USERS_ALLOW_SIGN_UP:     "false"
+      GF_SERVER_ROOT_URL:         http://localhost:3001
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - landiq-network
+
+volumes:
+  postgres_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  landiq-network:
+    name: landiq-network
+    driver: bridge

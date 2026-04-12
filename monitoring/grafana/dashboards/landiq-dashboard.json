@@ -1,0 +1,51 @@
+{
+  "title": "LandIQ Platform Dashboard",
+  "uid": "landiq-main",
+  "version": 1,
+  "schemaVersion": 38,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "API Requests / min",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "targets": [{ "expr": "rate(flask_http_request_total[1m]) * 60", "legendFormat": "req/min" }],
+      "options": { "colorMode": "background", "graphMode": "area" }
+    },
+    {
+      "id": 2, "type": "stat", "title": "Avg Response Time (ms)",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "targets": [{ "expr": "rate(flask_http_request_duration_seconds_sum[5m]) / rate(flask_http_request_duration_seconds_count[5m]) * 1000", "legendFormat": "ms" }],
+      "options": { "colorMode": "background" }
+    },
+    {
+      "id": 3, "type": "stat", "title": "Error Rate %",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "targets": [{ "expr": "rate(flask_http_request_total{status=~'5..'}[5m]) / rate(flask_http_request_total[5m]) * 100", "legendFormat": "%" }],
+      "options": { "colorMode": "background", "thresholds": { "steps": [{"color": "green", "value": 0}, {"color": "red", "value": 1}] } }
+    },
+    {
+      "id": 4, "type": "stat", "title": "Active Users",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "targets": [{ "expr": "landiq_active_users_total", "legendFormat": "users" }],
+      "options": { "colorMode": "background" }
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "Request Rate Over Time",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        { "expr": "rate(flask_http_request_total{status='200'}[1m])", "legendFormat": "2xx" },
+        { "expr": "rate(flask_http_request_total{status=~'4..'}[1m])", "legendFormat": "4xx" },
+        { "expr": "rate(flask_http_request_total{status=~'5..'}[1m])", "legendFormat": "5xx" }
+      ]
+    },
+    {
+      "id": 6, "type": "timeseries", "title": "AI Analysis Requests",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        { "expr": "rate(flask_http_request_total{path='/api/analyze'}[5m])", "legendFormat": "Quick Analyze" },
+        { "expr": "rate(flask_http_request_total{path=~'/api/analysis/.*'}[5m])", "legendFormat": "Parcel Analysis" }
+      ]
+    }
+  ]
+}

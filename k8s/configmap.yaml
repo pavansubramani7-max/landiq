@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: landiq-config
+  namespace: landiq
+data:
+  FLASK_ENV: "production"
+  JWT_ACCESS_TOKEN_EXPIRES: "3600"
+  UPLOAD_FOLDER: "/app/uploads"
+  REPORTS_FOLDER: "/app/reports"
+  MAX_CONTENT_LENGTH: "16777216"
