@@ -106,8 +106,7 @@ jobs:
           tags: |
             ${{ env.IMAGE_BACKEND }}:latest
             ${{ env.IMAGE_BACKEND }}:sha-${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          no-cache: true
 
       - name: Build and push frontend image
         uses: docker/build-push-action@v5
@@ -118,5 +117,4 @@ jobs:
             ${{ env.IMAGE_FRONTEND }}:latest
             ${{ env.IMAGE_FRONTEND }}:sha-${{ github.sha }}
           build-args: REACT_APP_API_URL=https://api.landiq.in
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          no-cache: true
