@@ -3,7 +3,14 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from app import app as flask_app
+import importlib.util
+spec = importlib.util.spec_from_file_location(
+    "main_app",
+    os.path.join(os.path.dirname(__file__), '..', 'app.py')
+)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+flask_app = module.app
 from app.database import Base, engine, SessionLocal
 from app.models.user import User, UserRole
 
