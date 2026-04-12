@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { MapPin, BarChart2, Map, Info, LogOut, User, Shield, Home, Menu, X } from 'lucide-react';
+import { MapPin, BarChart2, Map, Info, LogOut, Shield, Home } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -8,11 +8,10 @@ export default function Navbar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
-    toast.success('Logged out successfully');
+    toast.success('Logged out');
     navigate('/login');
   };
 
@@ -29,59 +28,117 @@ export default function Navbar() {
 
   return (
     <>
-      {/* Top gold strip */}
-      <div style={{ background: 'linear-gradient(90deg, var(--gold-dark), var(--gold), var(--gold-dark))', height: '3px' }} />
+      {/* Gold top strip */}
+      <div style={{ background: 'linear-gradient(90deg, var(--gold-dark), var(--gold-light), var(--gold-dark))', height: '3px' }} />
 
-      <nav className="navbar">
+      <nav style={{
+        background: 'var(--dark)',
+        height: '62px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 2rem',
+        position: 'sticky',
+        top: 0,
+        zIndex: 200,
+        borderBottom: '1px solid rgba(201,168,76,0.25)',
+        boxShadow: '0 2px 20px rgba(0,0,0,0.5)',
+      }}>
         {/* Brand */}
-        <Link to={user ? '/dashboard' : '/'} className="nav-brand">
-          🏡 Land<span>IQ</span>
+        <Link to={user ? '/dashboard' : '/'} style={{
+          color: 'var(--gold-light)',
+          textDecoration: 'none',
+          fontFamily: 'Times New Roman, Georgia, serif',
+          fontWeight: 700,
+          fontSize: '1.35rem',
+          letterSpacing: '0.04em',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.4rem',
+          flexShrink: 0,
+        }}>
+          🏡 <span>Land<span style={{ color: 'var(--gold)' }}>IQ</span></span>
         </Link>
 
-        {/* Center tagline */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
-          <div style={{ fontSize: '0.62rem', color: 'var(--gold)', letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 600 }}>
-            AI · Land Intelligence · Bangalore
-          </div>
-        </div>
-
         {/* Nav links */}
-        <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: '0.05rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.05rem' }}>
           {navLinks.map(l => (
-            <Link key={l.to} to={l.to}
-              className={`nav-link ${pathname === l.to ? 'active' : ''}`}>
+            <Link key={l.to} to={l.to} style={{
+              color: pathname === l.to ? 'var(--gold)' : 'rgba(255,255,255,0.6)',
+              textDecoration: 'none',
+              padding: '0.4rem 0.8rem',
+              borderRadius: '4px',
+              fontSize: '0.78rem',
+              fontWeight: pathname === l.to ? 700 : 500,
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.3rem',
+              transition: 'all 0.2s',
+              borderBottom: pathname === l.to ? '2px solid var(--gold)' : '2px solid transparent',
+            }}
+              onMouseEnter={e => { if (pathname !== l.to) e.currentTarget.style.color = 'var(--gold-light)'; }}
+              onMouseLeave={e => { if (pathname !== l.to) e.currentTarget.style.color = 'rgba(255,255,255,0.6)'; }}>
               {l.icon} {l.label}
             </Link>
           ))}
+        </div>
 
-          {user ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginLeft: '0.8rem', paddingLeft: '0.8rem', borderLeft: '1px solid rgba(201,168,76,0.3)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, var(--gold-dark), var(--gold))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 700, color: 'var(--dark)' }}>
-                  {user.full_name.charAt(0).toUpperCase()}
+        {/* User / Auth */}
+        {user ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: '50%',
+                background: 'linear-gradient(135deg, var(--gold-dark), var(--gold))',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '0.82rem', fontWeight: 700, color: 'var(--dark)',
+              }}>
+                {user.full_name.charAt(0).toUpperCase()}
+              </div>
+              <div style={{ lineHeight: 1.2 }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--gold-light)' }}>
+                  {user.full_name.split(' ')[0]}
                 </div>
-                <div style={{ lineHeight: 1.2 }}>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--gold-light)' }}>{user.full_name.split(' ')[0]}</div>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--gold-dark)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{user.role}</div>
+                <div style={{ fontSize: '0.62rem', color: 'var(--gold-dark)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  {user.role}
                 </div>
               </div>
-              <button onClick={handleLogout}
-                style={{ background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.2)', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', padding: '0.3rem 0.7rem', borderRadius: 4, display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', transition: 'all 0.2s' }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(192,57,43,0.3)'; e.currentTarget.style.borderColor = 'rgba(192,57,43,0.5)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.1)'; e.currentTarget.style.borderColor = 'rgba(201,168,76,0.2)'; }}>
-                <LogOut size={13} /> Logout
-              </button>
             </div>
-          ) : (
-            <div style={{ display: 'flex', gap: '0.5rem', marginLeft: '0.8rem' }}>
-              <Link to="/login" className="nav-link">Login</Link>
-              <Link to="/register"
-                style={{ background: 'linear-gradient(135deg, var(--gold-dark), var(--gold))', color: 'var(--dark)', textDecoration: 'none', padding: '0.4rem 1.1rem', borderRadius: 4, fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', transition: 'all 0.2s' }}>
-                Register
-              </Link>
-            </div>
-          )}
-        </div>
+            <button onClick={handleLogout} style={{
+              background: 'rgba(201,168,76,0.08)',
+              border: '1px solid rgba(201,168,76,0.2)',
+              color: 'rgba(255,255,255,0.65)',
+              cursor: 'pointer',
+              padding: '0.3rem 0.65rem',
+              borderRadius: '4px',
+              display: 'flex', alignItems: 'center', gap: '0.3rem',
+              fontSize: '0.72rem', fontWeight: 600,
+              letterSpacing: '0.06em', textTransform: 'uppercase',
+              transition: 'all 0.2s',
+            }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(192,57,43,0.25)'; e.currentTarget.style.color = '#fff'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(201,168,76,0.08)'; e.currentTarget.style.color = 'rgba(255,255,255,0.65)'; }}>
+              <LogOut size={12} /> Logout
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+            <Link to="/login" style={{
+              color: 'rgba(255,255,255,0.6)', textDecoration: 'none',
+              padding: '0.35rem 0.8rem', fontSize: '0.78rem',
+              fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase',
+            }}>Login</Link>
+            <Link to="/register" style={{
+              background: 'linear-gradient(135deg, var(--gold-dark), var(--gold))',
+              color: 'var(--dark)', textDecoration: 'none',
+              padding: '0.38rem 1rem', borderRadius: '4px',
+              fontSize: '0.78rem', fontWeight: 700,
+              letterSpacing: '0.06em', textTransform: 'uppercase',
+            }}>Register</Link>
+          </div>
+        )}
       </nav>
     </>
   );

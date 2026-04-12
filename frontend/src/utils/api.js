@@ -12,11 +12,14 @@ API.interceptors.request.use((config) => {
   return config;
 });
 
-// Auto-logout on 401
+// Auto-logout on 401 — only for protected routes, not public ones
 API.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    const url = err.config?.url || '';
+    const publicRoutes = ['/api/analyze', '/api/upload-doc', '/api/report', '/api/health', '/api/auth/login', '/api/auth/register'];
+    const isPublic = publicRoutes.some(r => url.includes(r));
+    if (err.response?.status === 401 && !isPublic) {
       localStorage.removeItem('landiq_token');
       localStorage.removeItem('landiq_user');
       window.location.href = '/login';
