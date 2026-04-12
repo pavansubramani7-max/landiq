@@ -238,14 +238,7 @@ class TestAdmin:
 
     def test_update_user_role(self, client, admin_headers, user_token):
         from flask_jwt_extended import decode_token
-        import importlib.util, os
-        spec = importlib.util.spec_from_file_location(
-            "main_app",
-            os.path.join(os.path.dirname(__file__), '..', 'app.py')
-        )
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        flask_app = mod.app
+        flask_app = client.application
         with flask_app.app_context():
             uid = decode_token(user_token)['sub']
         r = client.patch(f'/api/admin/users/{uid}',
