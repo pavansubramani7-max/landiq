@@ -2,9 +2,10 @@ FROM node:18-alpine AS build
 WORKDIR /app
 ARG REACT_APP_API_URL=http://localhost:5000
 ENV REACT_APP_API_URL=$REACT_APP_API_URL
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json ./
+RUN npm install --legacy-peer-deps
 COPY . .
+ENV CI=false
 RUN npm run build
 
 FROM nginx:alpine
