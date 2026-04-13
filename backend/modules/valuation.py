@@ -187,12 +187,12 @@ def predict_value(data):
     shap_values = _compute_shap_approximation(X_vec, rf_pred)
 
     return {
-        'estimated_value': round(estimated, 2),
-        'price_per_sqft':  round(price_sqft, 2),
-        'confidence_pct':  round(float(confidence), 1),
-        'rf_estimate':     round(rf_pred * area, 2),
-        'xgb_estimate':    round(xgb_pred * area, 2),
-        'ann_estimate':    round(ann_pred * area, 2),
-        'shap_values':     shap_values,
+        'estimated_value': float(round(estimated, 2)),
+        'price_per_sqft':  float(round(price_sqft, 2)),
+        'confidence_pct':  float(round(float(confidence), 1)),
+        'rf_estimate':     float(round(rf_pred * area, 2)),
+        'xgb_estimate':    float(round(xgb_pred * area, 2)),
+        'ann_estimate':    float(round(ann_pred * area, 2)),
+        'shap_values':     {k: float(v) for k, v in shap_values.items()},
         'model_weights':   {'rf': 0.35, 'xgb': 0.45, 'ann': 0.20},
     }

@@ -125,11 +125,11 @@ def detect_fraud(data, valuation):
     fraud_detected = len(signals) > 0 or is_anomaly
 
     return {
-        'fraud_detected':    fraud_detected,
-        'signal_count':      len(signals),
+        'fraud_detected':    bool(fraud_detected),
+        'signal_count':      int(len(signals)),
         'signals':           signals,
         'fraud_risk':        'CRITICAL' if critical else ('HIGH' if len(signals) >= 2 else ('MEDIUM' if len(signals) == 1 else 'LOW')),
-        'fraud_probability': fraud_prob,
-        'anomaly_score':     anomaly_score,
+        'fraud_probability': float(fraud_prob),
+        'anomaly_score':     float(anomaly_score) if anomaly_score is not None else None,
         'ml_model':          'IsolationForest' if _iso_forest else 'rule_based',
     }

@@ -142,12 +142,12 @@ def analyze_risk(data, valuation):
         level = 'CRITICAL'
 
     result = {
-        'risk_score':  round(rule_score, 1),
+        'risk_score':  float(round(rule_score, 1)),
         'risk_level':  level,
-        'breakdown':   {k: round(v, 1) for k, v in breakdown.items()},
+        'breakdown':   {k: float(round(v, 1)) for k, v in breakdown.items()},
         'ml_model':    'GradientBoostingClassifier' if ml_level else 'rule_based',
     }
     if ml_proba:
-        result['risk_probabilities'] = ml_proba
+        result['risk_probabilities'] = {k: float(v) for k, v in ml_proba.items()}
 
     return result
