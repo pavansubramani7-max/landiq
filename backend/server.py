@@ -1,29 +1,27 @@
 """
-LandIQ Backend - Main Server Entry Point
+LandIQ Backend Server v2.0.0
 Run: python server.py
 """
-import os
-import sys
-import uuid
+import os, sys, uuid, json
 from datetime import timedelta
 
-# Ensure backend directory is in path
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE_DIR)
 
 from dotenv import load_dotenv
 load_dotenv(os.path.join(BASE_DIR, '.env'))
 
-from flask import Flask, request, jsonify, send_file
+import numpy as np
+from flask import Flask, request, send_file
+from flask.json.provider import DefaultJSONProvider
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-import json
-import numpy as np
 
-# ── Custom JSON encoder to handle numpy types (Python 3.14 fix) ───────────────
-class NumpyEncoder(json.JSONEncoder):
+
+# ── Numpy-safe JSON provider (fixes Python 3.14 + Flask 3.x) ─────────────────
+class NumpyJSONProvider(DefaultJSONProvider):
     def default(self, obj):
         if isinstance(obj, np.integer):  return int(obj)
         if isinstance(obj, np.floating): return float(obj)
@@ -31,86 +29,85 @@ class NumpyEncoder(json.JSONEncoder):
         if isinstance(obj, np.ndarray):  return obj.tolist()
         return super().default(obj)
 
-# ── Create Flask app ──────────────────────────────────────────────────────────
-application = Flask(__name__)
+
+# ── Flask app ─────────────────────────────────────────────────────────────────
+class LandIQApp(Flask):
+    json_provider_class = NumpyJSONProvider
+
+application = LandIQApp(__name__)
 CORS(application)
 
-# Fix numpy types not JSON serializable in Python 3.14 / Flask 3.x
-from flask.json.provider import DefaultJSONProvider
-class _NumpyProvider(DefaultJSONProvider):
-    def default(self, obj):
-        if isinstance(obj, np.integer):  return int(obj)
-        if isinstance(obj, np.floating): return float(obj)
-        if isinstance(obj, np.bool_):    return bool(obj)
-        if isinstance(obj, np.ndarray):  return obj.tolist()
-        return super().default(obj)
-application.json_provider_class = _NumpyProvider
-application.json = _NumpyProvider(application)
-
 # ── Config ────────────────────────────────────────────────────────────────────
-application.config['SECRET_KEY']                = os.getenv('SECRET_KEY', 'landiq-secret-dev-key-change-in-prod')
-application.config['JWT_SECRET_KEY']            = os.getenv('JWT_SECRET_KEY', 'landiq-jwt-dev-key-change-in-prod')
-application.config['JWT_ACCESS_TOKEN_EXPIRES']  = timedelta(seconds=int(os.getenv('JWT_ACCESS_TOKEN_EXPIRES', 3600)))
-application.config['SQLALCHEMY_DATABASE_URI']   = os.getenv('DATABASE_URL', 'sqlite:///./landiq.db')
-application.config['MAX_CONTENT_LENGTH']        = 16 * 1024 * 1024
-application.config['UPLOAD_FOLDER']             = os.getenv('UPLOAD_FOLDER',  os.path.join(BASE_DIR, 'uploads'))
-application.config['REPORTS_FOLDER']            = os.getenv('REPORTS_FOLDER', os.path.join(BASE_DIR, 'reports'))
+application.config.update(
+    SECRET_KEY               = os.getenv('SECRET_KEY', 'landiq-secret-dev-key-32chars!!'),
+    JWT_SECRET_KEY           = os.getenv('JWT_SECRET_KEY', 'landiq-jwt-dev-key-32chars!!!'),
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(seconds=int(os.getenv('JWT_ACCESS_TOKEN_EXPIRES', 3600))),
+    MAX_CONTENT_LENGTH       = 16 * 1024 * 1024,
+    UPLOAD_FOLDER            = os.getenv('UPLOAD_FOLDER',  os.path.join(BASE_DIR, 'uploads')),
+    REPORTS_FOLDER           = os.getenv('REPORTS_FOLDER', os.path.join(BASE_DIR, 'reports')),
+)
 
 os.makedirs(application.config['UPLOAD_FOLDER'],  exist_ok=True)
 os.makedirs(application.config['REPORTS_FOLDER'], exist_ok=True)
 
-# ── JWT ───────────────────────────────────────────────────────────────────────
+# ── Extensions ────────────────────────────────────────────────────────────────
 JWTManager(application)
 
-# ── Rate Limiter ──────────────────────────────────────────────────────────────
 limiter = Limiter(
-    get_remote_address,
-    app=application,
+    get_remote_address, app=application,
     default_limits=['200 per day', '60 per hour'],
     storage_uri='memory://',
 )
 
-# ── Prometheus (optional) ─────────────────────────────────────────────────────
 try:
     from prometheus_flask_exporter import PrometheusMetrics
-    _metrics = PrometheusMetrics(application, default_labels={'app': 'landiq', 'version': '2.0.0'})
-    _metrics.info('landiq_app_info', 'LandIQ Application Info', version='2.0.0')
+    PrometheusMetrics(application, default_labels={'app': 'landiq'})
 except Exception:
     pass
 
-# ── Register Blueprints ───────────────────────────────────────────────────────
+# ── Blueprints ────────────────────────────────────────────────────────────────
 from app.routes.auth      import auth_bp
 from app.routes.parcels   import parcels_bp
 from app.routes.analysis  import analysis_bp
 from app.routes.documents import documents_bp
 from app.routes.admin     import admin_bp
 
-application.register_blueprint(auth_bp)
-application.register_blueprint(parcels_bp)
-application.register_blueprint(analysis_bp)
-application.register_blueprint(documents_bp)
-application.register_blueprint(admin_bp)
+for bp in [auth_bp, parcels_bp, analysis_bp, documents_bp, admin_bp]:
+    application.register_blueprint(bp)
 
-# ── Init DB ───────────────────────────────────────────────────────────────────
+# ── Database ──────────────────────────────────────────────────────────────────
 from app.database import init_db
 with application.app_context():
     init_db()
 
-# ── AI Modules ────────────────────────────────────────────────────────────────
-from modules.valuation      import predict_value
-from modules.risk_analysis  import analyze_risk
+# ── AI modules ────────────────────────────────────────────────────────────────
+from modules.valuation       import predict_value
+from modules.risk_analysis   import analyze_risk
 from modules.fraud_detection import detect_fraud
-from modules.forecasting    import forecast_prices
-from modules.legal_intel    import parse_document
-from modules.report_gen     import generate_report
+from modules.forecasting     import forecast_prices
+from modules.legal_intel     import parse_document
+from modules.report_gen      import generate_report
 
-_analysis_store = {}
+_store = {}  # in-memory analysis store
+
+
+def _safe_json(obj):
+    """Recursively convert numpy types to native Python types."""
+    if isinstance(obj, dict):
+        return {k: _safe_json(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_safe_json(i) for i in obj]
+    if isinstance(obj, np.integer):  return int(obj)
+    if isinstance(obj, np.floating): return float(obj)
+    if isinstance(obj, np.bool_):    return bool(obj)
+    if isinstance(obj, np.ndarray):  return obj.tolist()
+    return obj
+
 
 # ── Routes ────────────────────────────────────────────────────────────────────
-
 @application.get('/api/health')
 def health():
-    return jsonify({'status': 'ok', 'version': '2.0.0'})
+    return application.json.response({'status': 'ok', 'version': '2.0.0'})
 
 
 @application.post('/api/analyze')
@@ -118,13 +115,12 @@ def health():
 def analyze():
     data = request.get_json()
     if not data:
-        return jsonify({'error': 'No data provided'}), 400
+        return application.json.response({'error': 'No data provided'}), 400
 
     for f in ['area_sqft', 'zone', 'infrastructure', 'asking_price']:
         if f not in data:
-            return jsonify({'error': f'Missing field: {f}'}), 400
+            return application.json.response({'error': f'Missing field: {f}'}), 400
 
-    # Support both locality and city
     if not data.get('city')     and data.get('locality'): data['city']     = data['locality']
     if not data.get('locality') and data.get('city'):     data['locality'] = data['city']
 
@@ -132,16 +128,16 @@ def analyze():
     legal    = parse_document(doc_path, data) if doc_path else {'status': 'no_document'}
 
     try:
-        valuation = predict_value(data)
-        risk      = analyze_risk(data, valuation)
-        fraud     = detect_fraud(data, valuation)
-        forecast  = forecast_prices(data)
+        valuation = _safe_json(predict_value(data))
+        risk      = _safe_json(analyze_risk(data, valuation))
+        fraud     = _safe_json(detect_fraud(data, valuation))
+        forecast  = _safe_json(forecast_prices(data))
     except Exception as e:
-        return jsonify({'error': 'AI analysis error: ' + str(e)}), 500
+        return application.json.response({'error': 'AI error: ' + str(e)}), 500
 
-    estimated = valuation['estimated_value']
+    estimated = float(valuation['estimated_value'])
     asking    = float(data['asking_price'])
-    diff_pct  = ((asking - estimated) / estimated) * 100
+    diff_pct  = round(((asking - estimated) / estimated) * 100, 2)
 
     if fraud['fraud_detected']:
         rec = 'AVOID - Fraud signals detected. Do not proceed.'
@@ -155,58 +151,50 @@ def analyze():
         rec = 'FAIR DEAL - Price aligns with market. Standard due diligence advised.'
 
     aid = str(uuid.uuid4())[:8]
-    result = {
-        'analysis_id': aid,
-        'input': data,
-        'valuation': valuation,
-        'risk': risk,
-        'fraud': fraud,
-        'forecast': forecast,
-        'legal': legal,
-        'recommendation': rec,
-        'asking_vs_estimated_pct': round(diff_pct, 2),
-    }
-    _analysis_store[aid] = result
-    return jsonify(result)
+    result = _safe_json({
+        'analysis_id': aid, 'input': data,
+        'valuation': valuation, 'risk': risk,
+        'fraud': fraud, 'forecast': forecast,
+        'legal': legal, 'recommendation': rec,
+        'asking_vs_estimated_pct': diff_pct,
+    })
+    _store[aid] = result
+    return application.json.response(result)
 
 
 @application.post('/api/upload-doc')
 @limiter.limit('20 per hour')
 def upload_doc():
     if 'file' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
+        return application.json.response({'error': 'No file'}), 400
     f = request.files['file']
-    if not f.filename:
-        return jsonify({'error': 'Empty filename'}), 400
     ext = os.path.splitext(f.filename)[1].lower()
     if ext not in {'.txt', '.pdf', '.png', '.jpg', '.jpeg'}:
-        return jsonify({'error': 'Unsupported file type'}), 400
-    filename = uuid.uuid4().hex + ext
-    path = os.path.join(application.config['UPLOAD_FOLDER'], filename)
+        return application.json.response({'error': 'Unsupported type'}), 400
+    path = os.path.join(application.config['UPLOAD_FOLDER'], uuid.uuid4().hex + ext)
     f.save(path)
-    return jsonify({'file_path': path, 'status': 'uploaded'})
+    return application.json.response({'file_path': path, 'status': 'uploaded'})
 
 
 @application.get('/api/report/<aid>')
 def get_report(aid):
-    if aid not in _analysis_store:
-        return jsonify({'error': 'Analysis not found'}), 404
-    result      = _analysis_store[aid]
-    report_path = os.path.join(application.config['REPORTS_FOLDER'], f'report_{aid}.pdf')
+    if aid not in _store:
+        return application.json.response({'error': 'Not found'}), 404
+    path = os.path.join(application.config['REPORTS_FOLDER'], f'report_{aid}.pdf')
     try:
-        generate_report(result, report_path)
+        generate_report(_store[aid], path)
     except Exception as e:
-        return jsonify({'error': 'Report error: ' + str(e)}), 500
-    return send_file(report_path, as_attachment=True,
-                     download_name=f'LandIQ_Report_{aid}.pdf',
+        return application.json.response({'error': str(e)}), 500
+    return send_file(path, as_attachment=True,
+                     download_name=f'LandIQ_{aid}.pdf',
                      mimetype='application/pdf')
 
 
-# ── Run ───────────────────────────────────────────────────────────────────────
+# ── Entry point ───────────────────────────────────────────────────────────────
 if __name__ == '__main__':
     print('=' * 50)
-    print('  LandIQ Backend Server v2.0.0')
-    print('  URL: http://localhost:5000')
-    print('  Health: http://localhost:5000/api/health')
+    print('  LandIQ Backend v2.0.0')
+    print('  http://localhost:5000')
+    print('  http://localhost:5000/api/health')
     print('=' * 50)
     application.run(debug=False, port=5000, host='0.0.0.0')
