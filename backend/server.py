@@ -35,7 +35,7 @@ class LandIQApp(Flask):
     json_provider_class = NumpyJSONProvider
 
 application = LandIQApp(__name__)
-CORS(application)
+CORS(application, resources={r'/api/*': {'origins': '*'}}, supports_credentials=True)
 
 # ── Config ────────────────────────────────────────────────────────────────────
 application.config.update(
